@@ -1,0 +1,45 @@
+
+from Langchain.core.prompts import PromptTemplate, FewShotPromptTemplate, ChatPromptTemplate
+from Langchain.chains import LLMChain
+from src.common.LLM_model import GroqModel
+from Langchain.memory import ConversationBufferMemory
+from src.common.logger import logging
+from src.common.exception import CustomException
+import sys
+
+class MessageValidator:
+    def __init__(self, input_text: str, message_history: str):
+        self.input_text = input_text
+        self.message_history = message_history
+        self.llm = GroqModel
+        self.memory = ConversationBufferMemory()
+        self.prompt = self._define_prompt()
+        self.chain = self._define_chain()
+        self.response = self._validate_message()
+
+    def _define_prompt(self) -> ChatPromptTemplate:
+        system = "Some questions may be follow-up for the doctor's agent, so may not have symptoms, but may have answers to questions."
+        human = "{text}"
+        prompt = ChatPromptTemplate.from_messages([["system", system], ["human", human]])
+        return prompt
+
+    def _define_chain(self) -> LLMChain:
+        return self.prompt | self.llm
+
+    def _validate_message(self) -> str:
+        try:
+            response = self.chain.invoke({"text": self.input_text})
+            logging.info("Message Validation Completed")
+            logging.info(f"Message Validation: Response from LLM - {response}")
+            response = response.content
+        except Exception as e:
+            CustomException(e, sys)
+            response = "error"
+        logging.info(f"Message Validation Result: {response}")
+        return response
+
+# Example usage
+if __name__ == "__main__":
+    input_question = "3 days"
+    message_validator = MessageValidator(input_question, "")
+    input_question = "5 days"
